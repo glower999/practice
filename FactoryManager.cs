@@ -24,12 +24,29 @@ namespace MillingFactory
 
         public Order CreateOrder(string customerName, DateTime? deadline = null)
         {
-            return null;
+            Order order = new Order(nextOrderId, customerName, DateTime.Now, deadline);
+            nextOrderId++;
+            orders.Add(order);
+            return order;
         }
 
         public Machine FindSuitableMachine(Detail detail)
         {
-            return null;
+            Machine bestMachine = null;
+            int minTasks = int.MaxValue;
+
+            foreach (var machine in machines)
+            {
+                if (machine.IsOperational && machine.CanProduceDetail(detail))
+                {
+                    if (bestMachine == null)
+                    {
+                        bestMachine = machine;
+                    }
+                }
+            }
+
+            return bestMachine;
         }
 
         public bool DistributeOrder(Order order)
@@ -68,6 +85,11 @@ namespace MillingFactory
                     active.Add(order);
             }
             return active;
+        }
+
+        public List<Order> GetAllOrders()
+        {
+            return orders;
         }
 
         public List<Machine> GetAllMachines()
