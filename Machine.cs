@@ -38,9 +38,43 @@ namespace MillingFactory
             MaxDimension = maxDimension;
         }
 
+        private int[] ParseDimensions(string dimensions)
+        {
+            try
+            {
+                string[] parts = dimensions.Split('x');
+                if (parts.Length == 3)
+                {
+                    return new int[]
+                    {
+                        int.Parse(parts[0]),
+                        int.Parse(parts[1]),
+                        int.Parse(parts[2])
+                    };
+                }
+            }
+            catch { }
+            return new int[] { 0, 0, 0 };
+        }
+
         public bool CanProduceDetail(Detail detail)
         {
-            return false;
+            if (!IsOperational)
+                return false;
+
+            if (Accuracy > detail.Tolerance)
+                return false;
+
+            int[] detailDims = ParseDimensions(detail.Dimensions);
+            int[] machineDims = ParseDimensions(MaxDimension);
+
+            for (int i = 0; i < 3; i++)
+            {
+                if (detailDims[i] > machineDims[i])
+                    return false;
+            }
+
+            return true;
         }
 
         public void AddTask(Order order, Detail detail, int quantity)
@@ -64,13 +98,23 @@ namespace MillingFactory
 
         public bool NeedsMaintenance()
         {
-            return false;
+            return CurrentWorkHours >= (int)(MaxWorkHours * 0.9);
         }
 
         public void PerformMaintenance()
         {
             CurrentWorkHours = 0;
             IsOperational = true;
+        }
+
+        public int GetTaskCount()
+        {
+            return tasks.Count;
+        }
+
+        public List<MachineTask> GetTasks()
+        {
+            return tasks;
         }
 
         public void ShowMachineInfo()
