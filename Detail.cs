@@ -18,10 +18,19 @@ namespace MillingFactory
             Id = id;
             Name = name;
             DrawingNumber = drawingNumber;
-            Price = price;
+
+            if (price < 0)
+                Price = 100;
+            else
+                Price = price;
+
+            if (tolerance < 0.001m || tolerance > 0.1m)
+                Tolerance = 0.01m;
+            else
+                Tolerance = tolerance;
+
             Material = material;
             Dimensions = dimensions;
-            Tolerance = tolerance;
         }
 
         public string GetComplexityLevel()
@@ -46,6 +55,11 @@ namespace MillingFactory
                 return "Универсальный фрезерный станок";
             else
                 return "3-осевой фрезерный станок";
+        }
+
+        public decimal CalculateWeight()
+        {
+            return 0;
         }
 
         public override string ToString()
