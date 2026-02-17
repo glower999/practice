@@ -34,11 +34,41 @@ namespace MillingFactory
 
         public void AddDetail(Detail detail, int quantity)
         {
+            OrderItem item = new OrderItem();
+            item.Detail = detail;
+            item.Quantity = quantity;
+            item.IsCompleted = false;
+            items.Add(item);
+
+            totalCost = CalculateTotalCost();
         }
 
         public DateTime CalculateProductionDeadline()
         {
-            return DateTime.Now.AddDays(5);
+            double totalDays = 1;
+
+            foreach (var item in items)
+            {
+                double daysPerDetail;
+                string complexity = item.Detail.GetComplexityLevel();
+
+                switch (complexity)
+                {
+                    case "простая": daysPerDetail = 0.5; break;
+                    case "средняя": daysPerDetail = 1.0; break;
+                    case "сложная": daysPerDetail = 2.0; break;
+                    default: daysPerDetail = 1.0; break;
+                }
+
+                totalDays += daysPerDetail * item.Quantity;
+            }
+
+            if (Priority == "срочный")
+                totalDays *= 0.7;
+            else if (Priority == "сверхсрочный")
+                totalDays *= 0.5;
+
+            return OrderDate.AddDays(totalDays);
         }
 
         public bool MarkDetailComplete(int detailId)
@@ -53,7 +83,19 @@ namespace MillingFactory
 
         public decimal CalculateTotalCost()
         {
-            return 0;
+            decimal total = 0;
+
+            foreach (var item in items)
+            {
+                total += item.Detail.Price * item.Quantity;
+            }
+
+            if (Priority == "срочный")
+                total *= 1.20m;
+            else if (Priority == "сверхсрочный")
+                total *= 1.40m;
+
+            return total;
         }
 
         public List<OrderItem> GetItems()
