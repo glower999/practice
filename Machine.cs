@@ -77,13 +77,47 @@ namespace MillingFactory
             return true;
         }
 
-        public void AddTask(Order order, Detail detail, int quantity)
-        {
-        }
-
         public TimeSpan CalculateTaskTime(Detail detail, int quantity)
         {
-            return TimeSpan.Zero;
+            double setupHours = 2;
+            double hoursPerDetail;
+
+            string complexity = detail.GetComplexityLevel();
+            switch (complexity)
+            {
+                case "простая": hoursPerDetail = 1; break;
+                case "средняя": hoursPerDetail = 2; break;
+                case "сложная": hoursPerDetail = 4; break;
+                default: hoursPerDetail = 2; break;
+            }
+
+            double totalHours = setupHours + hoursPerDetail * quantity;
+
+            if (Type == "5-осевой")
+                totalHours *= 0.8;
+
+            return TimeSpan.FromHours(totalHours);
+        }
+
+        public void AddTask(Order order, Detail detail, int quantity)
+        {
+            MachineTask task = new MachineTask();
+            task.Order = order;
+            task.Detail = detail;
+            task.Quantity = quantity;
+
+            DateTime plannedStart = DateTime.Now;
+            foreach (var existingTask in tasks)
+            {
+                TimeSpan existingTime = CalculateTaskTime(existingTask.Detail, existingTask.Quantity);
+                plannedStart = plannedStart.Add(existingTime);
+            }
+
+            task.PlannedStart = plannedStart;
+            task.ActualStart = null;
+            task.CompletionTime = null;
+
+            tasks.Add(task);
         }
 
         public bool StartTask(int taskIndex)
@@ -135,7 +169,8 @@ namespace MillingFactory
                 Console.WriteLine("Ближайшие задачи:");
                 for (int i = 0; i < Math.Min(tasks.Count, 3); i++)
                 {
-                    Console.WriteLine($"  {i + 1}. {tasks[i].Detail.Name} x{tasks[i].Quantity}");
+                    string status = tasks[i].ActualStart.HasValue ? "В РАБОТЕ" : "ОЖИДАЕТ";
+                    Console.WriteLine($"  {i + 1}. {tasks[i].Detail.Name} x{tasks[i].Quantity} [{status}]");
                 }
             }
         }
