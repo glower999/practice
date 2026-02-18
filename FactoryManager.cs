@@ -39,8 +39,10 @@ namespace MillingFactory
             {
                 if (machine.IsOperational && machine.CanProduceDetail(detail))
                 {
-                    if (bestMachine == null)
+                    int taskCount = machine.GetTaskCount();
+                    if (taskCount < minTasks)
                     {
+                        minTasks = taskCount;
                         bestMachine = machine;
                     }
                 }
@@ -51,7 +53,20 @@ namespace MillingFactory
 
         public bool DistributeOrder(Order order)
         {
-            return false;
+            var items = order.GetItems();
+
+            foreach (var item in items)
+            {
+                Machine machine = FindSuitableMachine(item.Detail);
+                if (machine == null)
+                {
+                    return false;
+                }
+                machine.AddTask(order, item.Detail, item.Quantity);
+            }
+
+            order.Status = "в производстве";
+            return true;
         }
 
         public bool CompleteDetailProduction(int orderId, int detailId, int machineId)

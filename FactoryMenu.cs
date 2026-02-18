@@ -46,6 +46,7 @@ namespace MillingFactory
                 Console.WriteLine($"  Материал: {detail.Material}");
                 Console.WriteLine($"  Габариты: {detail.Dimensions} мм");
                 Console.WriteLine($"  Допуск: {detail.Tolerance} мм");
+                Console.WriteLine($"  Вес: {detail.CalculateWeight()} г");
                 Console.WriteLine($"  Сложность: {detail.GetComplexityLevel()}");
                 Console.WriteLine($"  Рекомендуемый станок: {detail.GetRecommendedMachine()}");
                 Console.WriteLine(new string('-', 40));
@@ -72,14 +73,129 @@ namespace MillingFactory
 
         public void CreateNewOrder()
         {
-            Console.WriteLine("=== ПРИЕМ НОВОГО ЗАКАЗА ===");
-            Console.WriteLine("(Функция будет реализована позже)");
+            Console.WriteLine("=== ПРИЕМ НОВОГО ЗАКАЗА ===\n");
+
+            Console.Write("Введите имя заказчика: ");
+            string customerName = Console.ReadLine();
+
+            if (string.IsNullOrWhiteSpace(customerName))
+            {
+                Console.WriteLine("Имя заказчика не может быть пустым!");
+                return;
+            }
+
+            Console.Write("Указать срок исполнения? (да/нет): ");
+            string deadlineChoice = Console.ReadLine();
+            DateTime? deadline = null;
+
+            if (deadlineChoice?.ToLower() == "да")
+            {
+                Console.Write("Введите дату (дд.мм.гггг): ");
+                string dateInput = Console.ReadLine();
+                if (DateTime.TryParse(dateInput, out DateTime parsedDate))
+                {
+                    deadline = parsedDate;
+                }
+                else
+                {
+                    Console.WriteLine("Некорректная дата. Срок не установлен.");
+                }
+            }
+
+            Order order = manager.CreateOrder(customerName, deadline);
+
+            Console.Write("Выберите приоритет (1-обычный, 2-срочный, 3-сверхсрочный): ");
+            string priorityInput = Console.ReadLine();
+            switch (priorityInput)
+            {
+                case "2": order.Priority = "срочный"; break;
+                case "3": order.Priority = "сверхсрочный"; break;
+                default: order.Priority = "обычный"; break;
+            }
+
+            Console.WriteLine("\n--- Доступные детали ---");
+            ShowAllDetails();
+
+            bool addingDetails = true;
+            while (addingDetails)
+            {
+                Console.Write("\nВведите ID детали (0 - завершить): ");
+                string detailInput = Console.ReadLine();
+
+                if (int.TryParse(detailInput, out int detailId))
+                {
+                    if (detailId == 0)
+                    {
+                        addingDetails = false;
+                        continue;
+                    }
+
+                    Detail detail = manager.GetDetailById(detailId);
+                    if (detail != null)
+                    {
+                        Console.Write($"Количество деталей '{detail.Name}': ");
+                        string qtyInput = Console.ReadLine();
+
+                        if (int.TryParse(qtyInput, out int quantity) && quantity > 0)
+                        {
+                            order.AddDetail(detail, quantity);
+                            Console.WriteLine($"Добавлено: {detail.Name} x{quantity}");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Некорректное количество!");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("Деталь не найдена!");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Некорректный ввод!");
+                }
+            }
+
+            if (order.GetItems().Count == 0)
+            {
+                Console.WriteLine("Заказ пуст. Отменён.");
+                return;
+            }
+
+            Console.WriteLine("\n--- Распределение по станкам ---");
+            bool distributed = manager.DistributeOrder(order);
+
+            if (distributed)
+            {
+                Console.WriteLine("Заказ успешно распределён по станкам!");
+            }
+            else
+            {
+                Console.WriteLine("Не удалось распределить все детали. Проверьте доступность станков.");
+            }
+
+            Console.WriteLine("\n--- Информация о заказе ---");
+            order.ShowOrderInfo();
         }
 
         public void ShowActiveOrders()
         {
-            Console.WriteLine("=== АКТИВНЫЕ ЗАКАЗЫ ===");
-            Console.WriteLine("(Функция будет реализована позже)");
+            Console.WriteLine("=== АКТИВНЫЕ ЗАКАЗЫ ===\n");
+
+            var activeOrders = manager.GetActiveOrders();
+
+            if (activeOrders.Count == 0)
+            {
+                Console.WriteLine("Нет активных заказов.");
+                return;
+            }
+
+            foreach (var order in activeOrders)
+            {
+                order.ShowOrderInfo();
+                Console.WriteLine(new string('=', 50));
+            }
         }
 
         public void ManageProduction()
@@ -121,17 +237,24 @@ namespace MillingFactory
                 if (detail != null)
                 {
                     Console.WriteLine($"\nДеталь: {detail.Name}");
+                    Console.WriteLine($"Материал: {detail.Material}");
+                    Console.WriteLine($"Габариты: {detail.Dimensions}");
+                    Console.WriteLine($"Допуск: {detail.Tolerance} мм");
                     Console.WriteLine($"Сложность: {detail.GetComplexityLevel()}");
+                    Console.WriteLine($"Вес: {detail.CalculateWeight()} г");
                     Console.WriteLine($"Рекомендуемый станок: {detail.GetRecommendedMachine()}");
 
                     Machine machine = manager.FindSuitableMachine(detail);
                     if (machine != null)
                     {
-                        Console.WriteLine($"Подходящий станок найден: {machine.Name} (#{machine.Id})");
+                        Console.WriteLine($"\nПодходящий станок найден: {machine.Name} (#{machine.Id})");
+                        Console.WriteLine($"  Тип: {machine.Type}, Точность: {machine.Accuracy} мм");
+                        TimeSpan time = machine.CalculateTaskTime(detail, 1);
+                        Console.WriteLine($"  Время на 1 деталь: {time.TotalHours:F1} ч.");
                     }
                     else
                     {
-                        Console.WriteLine("Подходящий станок не найден. Поиск станков будет реализован позже.");
+                        Console.WriteLine("\nПодходящий станок не найден!");
                     }
                 }
                 else
