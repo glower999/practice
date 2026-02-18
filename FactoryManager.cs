@@ -120,12 +120,36 @@ namespace MillingFactory
 
         public (int ordersCount, int completedOrders, decimal revenue, int busyMachines) GetProductionStats()
         {
-            return (0, 0, 0, 0);
+            int totalOrders = orders.Count;
+            int completedOrders = 0;
+            int busyMachines = 0;
+
+            foreach (var order in orders)
+            {
+                var completion = order.GetCompletionStatus();
+                if (completion.isFullyCompleted)
+                    completedOrders++;
+            }
+
+            foreach (var machine in machines)
+            {
+                if (machine.GetTaskCount() > 0)
+                    busyMachines++;
+            }
+
+            return (totalOrders, completedOrders, monthlyRevenue, busyMachines);
         }
 
         public List<Machine> GetMachinesNeedingMaintenance()
         {
             List<Machine> needingMaintenance = new List<Machine>();
+
+            foreach (var machine in machines)
+            {
+                if (machine.NeedsMaintenance())
+                    needingMaintenance.Add(machine);
+            }
+
             return needingMaintenance;
         }
 
