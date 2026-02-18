@@ -200,26 +200,263 @@ namespace MillingFactory
 
         public void ManageProduction()
         {
-            Console.WriteLine("=== УПРАВЛЕНИЕ ПРОИЗВОДСТВОМ ===");
-            Console.WriteLine("(Функция будет реализована позже)");
+            Console.WriteLine("=== УПРАВЛЕНИЕ ПРОИЗВОДСТВОМ ===\n");
+
+            var activeOrders = manager.GetActiveOrders();
+            if (activeOrders.Count == 0)
+            {
+                Console.WriteLine("Нет активных заказов для управления.");
+                return;
+            }
+
+            Console.WriteLine("Активные заказы:");
+            foreach (var order in activeOrders)
+            {
+                var status = order.GetCompletionStatus();
+                Console.WriteLine($"  Заказ #{order.Id} ({order.CustomerName}) - {status.completed}/{status.total} деталей готово");
+            }
+
+            Console.WriteLine("\nСтанки:");
+            var machines = manager.GetAllMachines();
+            foreach (var machine in machines)
+            {
+                Console.WriteLine($"  Станок #{machine.Id} {machine.Name} - задач: {machine.GetTaskCount()}, исправен: {(machine.IsOperational ? "ДА" : "НЕТ")}");
+            }
+
+            Console.WriteLine("\nДействия:");
+            Console.WriteLine("1. Начать выполнение задачи на станке");
+            Console.WriteLine("2. Завершить задачу на станке");
+            Console.WriteLine("3. Назад");
+            Console.Write("Выберите: ");
+
+            string choice = Console.ReadLine();
+
+            switch (choice)
+            {
+                case "1":
+                    Console.Write("Введите номер станка: ");
+                    if (int.TryParse(Console.ReadLine(), out int startMachineId))
+                    {
+                        Machine machine = manager.GetMachineById(startMachineId);
+                        if (machine != null && machine.GetTaskCount() > 0)
+                        {
+                            Console.WriteLine("Задачи на станке:");
+                            var tasks = machine.GetTasks();
+                            for (int i = 0; i < tasks.Count; i++)
+                            {
+                                Console.WriteLine($"  {i + 1}. Заказ #{tasks[i].Order.Id}: {tasks[i].Detail.Name} x{tasks[i].Quantity}");
+                            }
+
+                            Console.Write("Номер задачи для запуска: ");
+                            if (int.TryParse(Console.ReadLine(), out int taskNum) && machine.StartTask(taskNum - 1))
+                            {
+                                Console.WriteLine("Задача запущена!");
+                            }
+                            else
+                            {
+                                Console.WriteLine("Не удалось запустить задачу.");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Станок не найден или нет задач.");
+                        }
+                    }
+                    break;
+
+                case "2":
+                    Console.Write("Введите номер станка: ");
+                    if (int.TryParse(Console.ReadLine(), out int completeMachineId))
+                    {
+                        Machine machine = manager.GetMachineById(completeMachineId);
+                        if (machine != null && machine.GetTaskCount() > 0)
+                        {
+                            Console.WriteLine("Задачи на станке:");
+                            var tasks = machine.GetTasks();
+                            for (int i = 0; i < tasks.Count; i++)
+                            {
+                                string status = tasks[i].ActualStart.HasValue ? "В РАБОТЕ" : "ОЖИДАЕТ";
+                                Console.WriteLine($"  {i + 1}. Заказ #{tasks[i].Order.Id}: {tasks[i].Detail.Name} x{tasks[i].Quantity} [{status}]");
+                            }
+
+                            Console.Write("Номер задачи для завершения: ");
+                            if (int.TryParse(Console.ReadLine(), out int taskNum) && taskNum > 0 && taskNum <= tasks.Count)
+                            {
+                                var task = tasks[taskNum - 1];
+                                bool result = manager.CompleteDetailProduction(task.Order.Id, task.Detail.Id, machine.Id);
+                                if (result)
+                                {
+                                    Console.WriteLine("Задача завершена! Деталь изготовлена.");
+
+                                    var orderCompletion = task.Order.GetCompletionStatus();
+                                    if (orderCompletion.isFullyCompleted)
+                                    {
+                                        Console.WriteLine($"\n*** ЗАКАЗ #{task.Order.Id} ПОЛНОСТЬЮ ВЫПОЛНЕН! ***");
+                                        Console.WriteLine($"Стоимость: {task.Order.CalculateTotalCost()} руб.");
+                                    }
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Ошибка при завершении задачи.");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Станок не найден или нет задач.");
+                        }
+                    }
+                    break;
+            }
         }
 
         public void RegisterDetailCompletion()
         {
-            Console.WriteLine("=== РЕГИСТРАЦИЯ ИЗГОТОВЛЕНИЯ ДЕТАЛИ ===");
-            Console.WriteLine("(Функция будет реализована позже)");
+            Console.WriteLine("=== РЕГИСТРАЦИЯ ИЗГОТОВЛЕНИЯ ДЕТАЛИ ===\n");
+
+            Console.Write("Введите номер заказа: ");
+            if (!int.TryParse(Console.ReadLine(), out int orderId))
+            {
+                Console.WriteLine("Некорректный ввод!");
+                return;
+            }
+
+            Console.Write("Введите ID детали: ");
+            if (!int.TryParse(Console.ReadLine(), out int detailId))
+            {
+                Console.WriteLine("Некорректный ввод!");
+                return;
+            }
+
+            Console.Write("Введите номер станка: ");
+            if (!int.TryParse(Console.ReadLine(), out int machineId))
+            {
+                Console.WriteLine("Некорректный ввод!");
+                return;
+            }
+
+            bool result = manager.CompleteDetailProduction(orderId, detailId, machineId);
+
+            if (result)
+            {
+                Console.WriteLine("Деталь успешно зарегистрирована как изготовленная!");
+
+                var allOrders = manager.GetAllOrders();
+                foreach (var order in allOrders)
+                {
+                    if (order.Id == orderId)
+                    {
+                        var completion = order.GetCompletionStatus();
+                        Console.WriteLine($"Готовность заказа: {completion.completed}/{completion.total}");
+
+                        if (completion.isFullyCompleted)
+                        {
+                            Console.WriteLine($"\n*** ПОЗДРАВЛЯЕМ! Заказ #{orderId} полностью выполнен! ***");
+                            Console.WriteLine($"Общая стоимость: {order.CalculateTotalCost()} руб.");
+                            Console.WriteLine("Документы на отгрузку подготовлены.");
+                        }
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                Console.WriteLine("Ошибка! Проверьте номер заказа, детали и станка.");
+            }
         }
 
         public void PerformMaintenance()
         {
-            Console.WriteLine("=== ТЕХНИЧЕСКОЕ ОБСЛУЖИВАНИЕ ===");
-            Console.WriteLine("(Функция будет реализована позже)");
+            Console.WriteLine("=== ТЕХНИЧЕСКОЕ ОБСЛУЖИВАНИЕ ===\n");
+
+            var needingMaintenance = manager.GetMachinesNeedingMaintenance();
+
+            if (needingMaintenance.Count == 0)
+            {
+                Console.WriteLine("Все станки в норме. ТО не требуется.");
+
+                Console.WriteLine("\nТекущее состояние станков:");
+                foreach (var machine in manager.GetAllMachines())
+                {
+                    int percent = (machine.MaxWorkHours > 0)
+                        ? (int)((double)machine.CurrentWorkHours / machine.MaxWorkHours * 100)
+                        : 0;
+                    Console.WriteLine($"  Станок #{machine.Id} {machine.Name}: {machine.CurrentWorkHours}/{machine.MaxWorkHours} ч. ({percent}% ресурса)");
+                }
+                return;
+            }
+
+            Console.WriteLine("Станки, требующие ТО:");
+            foreach (var machine in needingMaintenance)
+            {
+                int percent = (machine.MaxWorkHours > 0)
+                    ? (int)((double)machine.CurrentWorkHours / machine.MaxWorkHours * 100)
+                    : 0;
+                Console.WriteLine($"  Станок #{machine.Id} {machine.Name} - наработка: {machine.CurrentWorkHours}/{machine.MaxWorkHours} ч. ({percent}%)");
+            }
+
+            Console.Write("\nВведите номер станка для проведения ТО (0 - отмена): ");
+            if (int.TryParse(Console.ReadLine(), out int machineId) && machineId > 0)
+            {
+                Machine mach = manager.GetMachineById(machineId);
+                if (mach != null)
+                {
+                    mach.PerformMaintenance();
+                    Console.WriteLine($"ТО станка #{machineId} '{mach.Name}' выполнено!");
+                    Console.WriteLine($"Наработка сброшена. Станок исправен.");
+                }
+                else
+                {
+                    Console.WriteLine("Станок не найден!");
+                }
+            }
         }
 
         public void ShowProductionReport()
         {
-            Console.WriteLine("=== ОТЧЕТ О ПРОИЗВОДСТВЕ ===");
-            Console.WriteLine("(Функция будет реализована позже)");
+            Console.WriteLine("=== ОТЧЕТ О ПРОИЗВОДСТВЕ ===\n");
+
+            var stats = manager.GetProductionStats();
+
+            Console.WriteLine($"Всего заказов:      {stats.ordersCount}");
+            Console.WriteLine($"Выполнено заказов:  {stats.completedOrders}");
+            Console.WriteLine($"Выручка за месяц:   {stats.revenue} руб.");
+            Console.WriteLine($"Занятых станков:     {stats.busyMachines}/{manager.GetAllMachines().Count}");
+
+            Console.WriteLine("\n--- Состояние станков ---");
+            foreach (var machine in manager.GetAllMachines())
+            {
+                int percent = (machine.MaxWorkHours > 0)
+                    ? (int)((double)machine.CurrentWorkHours / machine.MaxWorkHours * 100)
+                    : 0;
+                string status = machine.IsOperational ? "исправен" : "НЕИСПРАВЕН";
+                Console.WriteLine($"  #{machine.Id} {machine.Name}: {status}, задач: {machine.GetTaskCount()}, наработка: {percent}%");
+            }
+
+            var needingMaintenance = manager.GetMachinesNeedingMaintenance();
+            if (needingMaintenance.Count > 0)
+            {
+                Console.WriteLine("\nСтанки, требующие ТО:");
+                foreach (var machine in needingMaintenance)
+                {
+                    Console.WriteLine($"  #{machine.Id} {machine.Name}");
+                }
+            }
+
+            Console.WriteLine("\n--- Активные заказы ---");
+            var activeOrders = manager.GetActiveOrders();
+            if (activeOrders.Count == 0)
+            {
+                Console.WriteLine("  Нет активных заказов.");
+            }
+            else
+            {
+                foreach (var order in activeOrders)
+                {
+                    var completion = order.GetCompletionStatus();
+                    Console.WriteLine($"  Заказ #{order.Id} ({order.CustomerName}): {completion.completed}/{completion.total} деталей, стоимость: {order.CalculateTotalCost()} руб.");
+                }
+            }
         }
 
         public void CheckProductionFeasibility()
