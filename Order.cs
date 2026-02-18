@@ -73,12 +73,37 @@ namespace MillingFactory
 
         public bool MarkDetailComplete(int detailId)
         {
+            foreach (var item in items)
+            {
+                if (item.Detail.Id == detailId && !item.IsCompleted)
+                {
+                    item.IsCompleted = true;
+
+                    var status = GetCompletionStatus();
+                    if (status.isFullyCompleted)
+                    {
+                        Status = "готов";
+                    }
+
+                    return true;
+                }
+            }
             return false;
         }
 
         public (int completed, int total, bool isFullyCompleted) GetCompletionStatus()
         {
-            return (0, 0, false);
+            int completed = 0;
+            int total = items.Count;
+
+            foreach (var item in items)
+            {
+                if (item.IsCompleted)
+                    completed++;
+            }
+
+            bool isFullyCompleted = (total > 0 && completed == total);
+            return (completed, total, isFullyCompleted);
         }
 
         public decimal CalculateTotalCost()
