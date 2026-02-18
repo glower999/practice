@@ -122,11 +122,32 @@ namespace MillingFactory
 
         public bool StartTask(int taskIndex)
         {
+            if (taskIndex >= 0 && taskIndex < tasks.Count)
+            {
+                tasks[taskIndex].ActualStart = DateTime.Now;
+                return true;
+            }
             return false;
         }
 
         public bool CompleteTask(int taskIndex)
         {
+            if (taskIndex >= 0 && taskIndex < tasks.Count)
+            {
+                var task = tasks[taskIndex];
+                task.CompletionTime = DateTime.Now;
+
+                TimeSpan taskTime = CalculateTaskTime(task.Detail, task.Quantity);
+                CurrentWorkHours += (int)taskTime.TotalHours;
+
+                if (CurrentWorkHours >= MaxWorkHours)
+                {
+                    IsOperational = false;
+                }
+
+                tasks.RemoveAt(taskIndex);
+                return true;
+            }
             return false;
         }
 
@@ -169,8 +190,9 @@ namespace MillingFactory
                 Console.WriteLine("Ближайшие задачи:");
                 for (int i = 0; i < Math.Min(tasks.Count, 3); i++)
                 {
-                    string status = tasks[i].ActualStart.HasValue ? "В РАБОТЕ" : "ОЖИДАЕТ";
-                    Console.WriteLine($"  {i + 1}. {tasks[i].Detail.Name} x{tasks[i].Quantity} [{status}]");
+                    string status = tasks[i].CompletionTime.HasValue ? "ЗАВЕРШЕНА" :
+                                    tasks[i].ActualStart.HasValue ? "В РАБОТЕ" : "ОЖИДАЕТ";
+                    Console.WriteLine($"  {i + 1}. Заказ #{tasks[i].Order.Id}: {tasks[i].Detail.Name} x{tasks[i].Quantity} [{status}]");
                 }
             }
         }
