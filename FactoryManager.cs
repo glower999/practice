@@ -71,7 +71,51 @@ namespace MillingFactory
 
         public bool CompleteDetailProduction(int orderId, int detailId, int machineId)
         {
-            return false;
+            Order targetOrder = null;
+            foreach (var order in orders)
+            {
+                if (order.Id == orderId)
+                {
+                    targetOrder = order;
+                    break;
+                }
+            }
+
+            Machine targetMachine = null;
+            foreach (var machine in machines)
+            {
+                if (machine.Id == machineId)
+                {
+                    targetMachine = machine;
+                    break;
+                }
+            }
+
+            if (targetOrder == null || targetMachine == null)
+                return false;
+
+            bool detailMarked = targetOrder.MarkDetailComplete(detailId);
+            if (!detailMarked)
+                return false;
+
+            var machineTasks = targetMachine.GetTasks();
+            for (int i = 0; i < machineTasks.Count; i++)
+            {
+                if (machineTasks[i].Order.Id == orderId && machineTasks[i].Detail.Id == detailId)
+                {
+                    targetMachine.CompleteTask(i);
+                    break;
+                }
+            }
+
+            var completion = targetOrder.GetCompletionStatus();
+            if (completion.isFullyCompleted)
+            {
+                targetOrder.Status = "готов";
+                monthlyRevenue += targetOrder.CalculateTotalCost();
+            }
+
+            return true;
         }
 
         public (int ordersCount, int completedOrders, decimal revenue, int busyMachines) GetProductionStats()
@@ -118,6 +162,16 @@ namespace MillingFactory
             {
                 if (detail.Id == id)
                     return detail;
+            }
+            return null;
+        }
+
+        public Machine GetMachineById(int id)
+        {
+            foreach (var machine in machines)
+            {
+                if (machine.Id == id)
+                    return machine;
             }
             return null;
         }
